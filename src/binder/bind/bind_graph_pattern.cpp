@@ -9,6 +9,7 @@
 #include "common/constants.h"
 #include "common/enums/rel_direction.h"
 #include "common/exception/binder.h"
+#include "common/exception/catalog.h"
 #include "common/types/types.h"
 #include "common/utils.h"
 #include "function/cast/functions/cast_from_string_functions.h"
@@ -962,7 +963,14 @@ Binder::bindRelGroupEntries(const std::vector<std::string>& tableNames,
                         dbNames[entry] = resolvedDbName;
                     }
                 } else {
-                    throw BinderException(std::format("Table {} does not exist.", name));
+                    // Unqualified rel label not found: report the standard catalog error
+                    // (e.g. CatalogException for internal index tables that aren't bindable
+                    // rel groups). Qualified names report the owning database.
+                    if (!dbName.empty()) {
+                        throw BinderException(std::format(
+                            "Table {} does not exist in attached database {}.", tableName, dbName));
+                    }
+                    throw CatalogException(std::format("{} does not exist in catalog.", tableName));
                 }
             }
         }
